@@ -40,6 +40,19 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const ASSETS_DIR = path.resolve(ROOT_DIR, "assets");
 
+// Base URL for allowed domains (Render provides RENDER_EXTERNAL_URL)
+const baseUrlRaw = process.env.RENDER_EXTERNAL_URL ?? process.env.BASE_URL ?? "";
+const baseUrl = baseUrlRaw.replace(/\/+$/, "") || "http://localhost:8000";
+
+// External resource domains used by pizzaz widgets (mapbox, etc.)
+const EXTERNAL_RESOURCE_DOMAINS = [
+  "https://api.mapbox.com",
+  "https://*.mapbox.com",
+  "https://*.mapboxcdn.com",
+  "https://fonts.googleapis.com",
+  "https://fonts.gstatic.com",
+];
+
 function readWidgetHtml(componentName: string): string {
   if (!fs.existsSync(ASSETS_DIR)) {
     throw new Error(
@@ -75,11 +88,20 @@ function readWidgetHtml(componentName: string): string {
 }
 
 function widgetDescriptorMeta(widget: PizzazWidget) {
+  const connectDomains = [baseUrl];
+  const resourceDomains = [
+    baseUrl,
+    ...EXTERNAL_RESOURCE_DOMAINS,
+  ];
   return {
     "openai/outputTemplate": widget.templateUri,
     "openai/toolInvocation/invoking": widget.invoking,
     "openai/toolInvocation/invoked": widget.invoked,
     "openai/widgetAccessible": true,
+    "openai/widgetCSP": {
+      connect_domains: connectDomains,
+      resource_domains: resourceDomains,
+    },
   } as const;
 }
 
@@ -379,6 +401,12 @@ const httpServer = createServer(
 
     if (req.method === "POST" && url.pathname === postPath) {
       await handlePostMessage(req, res, url);
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/health") {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("ok");
       return;
     }
 

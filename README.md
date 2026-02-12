@@ -33,14 +33,10 @@ The MCP servers in this demo highlight how each tool can light up widgets by com
 
 - `src/` – Source for each widget example.
 - `assets/` – Generated HTML, JS, and CSS bundles after running the build step.
-- `shopping_cart_python/` – Python MCP server that demonstrates how `_meta["widgetSessionId"]` keeps `widgetState` in sync across turns for a shopping-cart widget.
-- `pizzaz_server_node/` – MCP server implemented with the official TypeScript SDK.
-- `pizzaz_server_python/` – Python MCP server that returns the Pizzaz widgets.
-- `solar-system_server_python/` – Python MCP server for the 3D solar system widget.
+- `pizzaz_server_node/` – MCP server implemented with the official TypeScript SDK (Pizzaz widgets with inlined assets for Render deployment).
 - `kitchen_sink_server_node/` – Node MCP server for the kitchen-sink-lite widget.
-- `kitchen_sink_server_python/` – Python MCP server for the kitchen-sink-lite widget.
-- `authenticated_server_python/` – Python MCP server that demonstrates authenticated tool calls.
 - `build-all.mts` – Vite build orchestrator that produces hashed bundles for every widget entrypoint.
+- `build-pizzaz-inline.mts` – Build script for Pizzaz widgets with inlined assets (single web service, no external asset URLs).
 
 ### Pizzaz overview
 
@@ -63,7 +59,6 @@ Use it as a reference for how to wire UI to MCP tool responses and host APIs wit
 
 - Node.js 18+
 - pnpm (recommended) or npm/yarn
-- Python 3.10+ (for the Python MCP server)
 - pre-commit for formatting
 
 ## Install dependencies
@@ -93,94 +88,38 @@ To iterate on your components locally, you can also launch the Vite dev server:
 pnpm run dev
 ```
 
-## Serve the static assets
-
-All of the MCP servers expect the bundled HTML, JS, and CSS to be served from the local static file server. After every build, start the server before launching any MCP processes:
-
-```bash
-pnpm run serve
-```
-
-The assets are exposed at [`http://localhost:4444`](http://localhost:4444) with CORS enabled so that local tooling (including MCP inspectors) can fetch them.
-
-> **Note:** The Python Pizzaz server caches widget HTML with `functools.lru_cache`. If you rebuild or manually edit files in `assets/`, restart the MCP server so it picks up the updated markup.
-
 ## Run the MCP servers
 
-The repository ships several demo MCP servers that highlight different widget bundles:
+### Pizzaz server (Node, inlined assets)
 
-- **Pizzaz (Node & Python)** – pizza-inspired collection of tools and components
-- **Solar system (Python)** – 3D solar system viewer
-- **Authenticated (Python)** – set of tools that require different levels of OAuth
-- **Kitchen sink lite (Node & Python)** – minimal widget + server pairing that demonstrates tool output, widget state, `callTool`, and host helpers
-- **Shopping cart (Python)** – simple shopping cart widget that demonstrates how to use `widgetSessionId` to keep state between tool calls
+The Pizzaz server serves widgets with **inlined** JS and CSS—no separate asset server needed. Ideal for single web service deployment (e.g. Render.com).
 
-### Pizzaz Node server
+Build and run:
 
 ```bash
-cd pizzaz_server_node
-pnpm start
+pnpm run build:pizzaz
+pnpm run start:pizzaz
 ```
 
-### Pizzaz Python server
+Or from the server directory:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r pizzaz_server_python/requirements.txt
-uvicorn pizzaz_server_python.main:app --port 8000
+pnpm run build:pizzaz
+cd pizzaz_server_node && pnpm start
 ```
 
-### Authenticated Python server
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r authenticated_server_python/requirements.txt
-uvicorn authenticated_python_server.main:app --port 8000
-```
-
-### Solar system Python server
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r solar-system_server_python/requirements.txt
-uvicorn solar-system_server_python.main:app --port 8000
-```
+The server listens on `http://localhost:8000` by default. MCP SSE: `GET /mcp`, POST: `/mcp/messages?sessionId=...`, health: `GET /health`.
 
 ### Kitchen sink lite Node server
 
+Requires a separate static asset server. After `pnpm run build`, run:
+
 ```bash
+pnpm run serve
 pnpm --filter kitchen-sink-mcp-node start
 ```
 
-### Kitchen sink lite Python server
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r kitchen_sink_server_python/requirements.txt
-uvicorn kitchen_sink_server_python.main:app --port 8000
-```
-
-### Shopping cart Python server
-
-Use this example to learn how `_meta["widgetSessionId"]` can carry `widgetState` between tool calls so the model and widget share the same shopping cart. The widget merges tool responses with prior `widgetState`, and UI actions (like incrementing quantities) feed back into that shared state so the assistant always sees the latest cart.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r shopping_cart_python/requirements.txt
-uvicorn shopping_cart_python.main:app --port 8000
-```
-
-> [!NOTE]
-> In production you should persist the cart server-side (see [shopping_cart_python/README.md](shopping_cart_python/README.md)), but this demo shows the mechanics of keeping state through `widgetSessionId`.
-
----
-
-You can reuse the same virtual environment for all Python servers—install the dependencies once and run whichever entry point you need.
+The assets are exposed at [`http://localhost:4444`](http://localhost:4444) with CORS enabled.
 
 ## Testing in ChatGPT
 
@@ -198,14 +137,6 @@ You will get a public URL that you can use to add your local server to ChatGPT i
 
 For example: `https://<custom_endpoint>.ngrok-free.app/mcp`
 
-> [!IMPORTANT]
-> The Python MCP SDK enforces DNS rebinding protection. When tunneling (for example via ngrok), allow your tunnel host before starting any Python server:
->
-> ```bash
-> export MCP_ALLOWED_HOSTS="<custom_endpoint>.ngrok-free.app"
-> export MCP_ALLOWED_ORIGINS="https://<custom_endpoint>.ngrok-free.app"
-> ```
-
 Once you add a connector, you can use it in ChatGPT conversations.
 
 You can add your app to the conversation context by selecting it in the "More" options.
@@ -216,20 +147,14 @@ You can then invoke tools by asking something related. For example, for the Pizz
 
 ## Next steps
 
-- Customize the widget data: edit the handlers in `pizzaz_server_node/src`, `pizzaz_server_python/main.py`, or the solar system server to fetch data from your systems.
+- Customize the widget data: edit the handlers in `pizzaz_server_node/src` to fetch data from your systems.
 - Create your own components and add them to the gallery: drop new entries into `src/` and they will be picked up automatically by the build script.
 
-### Deploy your MCP server
+### Deploy your MCP server (Render.com)
 
-You can use the cloud environment of your choice to deploy your MCP server.
+The Pizzaz server is configured for Render.com via `render.yaml`. Connect your repo to Render; the blueprint will create a web service that builds inlined assets and runs the MCP server.
 
-Include this in the environment variables:
-
-```
-BASE_URL=https://your-server.com
-```
-
-This will be used to generate the HTML for the widgets so that they can serve static assets from this hosted url.
+Render automatically sets `RENDER_EXTERNAL_URL` (e.g. `https://pizzaz-mcp.onrender.com`). The server adds this domain to `openai/widgetCSP` so ChatGPT can load the widgets and external resources (Mapbox, etc.). No extra env vars are required.
 
 ## Contributing
 

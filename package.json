@@ -5,7 +5,10 @@
   "main": "host/main.ts",
   "scripts": {
     "build": "tsx ./build-all.mts",
+    "build:pizzaz": "tsx ./build-pizzaz-inline.mts",
     "serve": "serve -s ./assets -p 4444 --cors",
+    "serve:pizzaz": "serve -s ./assets -p 4444 --cors",
+    "start:pizzaz": "pnpm --filter pizzaz-mcp-node start",
     "dev": "vite --config vite.config.mts",
     "tsc": "tsc -b",
     "tsc:app": "tsc -p tsconfig.app.json",
