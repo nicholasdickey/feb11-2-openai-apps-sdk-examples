@@ -109,6 +109,8 @@ function widgetDescriptorMeta(widget: PizzazWidget) {
     "openai/toolInvocation/invoking": widget.invoking,
     "openai/toolInvocation/invoked": widget.invoked,
     "openai/widgetAccessible": true,
+    // Required for app submission: unique domain where widget assets are served
+    "openai/widgetDomain": baseUrl,
     "openai/widgetCSP": {
       connect_domains: CONNECT_DOMAINS,
       resource_domains: RESOURCE_DOMAINS,
