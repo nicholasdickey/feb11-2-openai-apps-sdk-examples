@@ -41,12 +41,28 @@ const ROOT_DIR = path.resolve(__dirname, "..", "..");
 const ASSETS_DIR = path.resolve(ROOT_DIR, "assets");
 
 // Base URL for allowed domains (Render provides RENDER_EXTERNAL_URL)
-const baseUrlRaw = process.env.RENDER_EXTERNAL_URL ?? process.env.BASE_URL ?? "";
-const baseUrl = baseUrlRaw.replace(/\/+$/, "") || "http://localhost:8000";
+const baseUrlRaw =
+  process.env.RENDER_EXTERNAL_URL ??
+  process.env.BASE_URL ??
+  "https://pizzaz-mcp-5kso.onrender.com";
+const baseUrl = baseUrlRaw.replace(/\/+$/, "") || "https://pizzaz-mcp-5kso.onrender.com";
 
-// External resource domains used by pizzaz widgets (mapbox, etc.)
-const EXTERNAL_RESOURCE_DOMAINS = [
+// Domains for network connections (fetch, XHR, WebSocket)
+const CONNECT_DOMAINS = [
+  baseUrl,
   "https://api.mapbox.com",
+  "https://*.tiles.mapbox.com",
+  "https://events.mapbox.com",
+  "https://*.mapbox.com",
+  "https://*.mapboxcdn.com",
+];
+
+// Domains for loading resources (scripts, styles, images, fonts)
+const RESOURCE_DOMAINS = [
+  baseUrl,
+  "https://api.mapbox.com",
+  "https://*.tiles.mapbox.com",
+  "https://events.mapbox.com",
   "https://*.mapbox.com",
   "https://*.mapboxcdn.com",
   "https://fonts.googleapis.com",
@@ -88,19 +104,14 @@ function readWidgetHtml(componentName: string): string {
 }
 
 function widgetDescriptorMeta(widget: PizzazWidget) {
-  const connectDomains = [baseUrl];
-  const resourceDomains = [
-    baseUrl,
-    ...EXTERNAL_RESOURCE_DOMAINS,
-  ];
   return {
     "openai/outputTemplate": widget.templateUri,
     "openai/toolInvocation/invoking": widget.invoking,
     "openai/toolInvocation/invoked": widget.invoked,
     "openai/widgetAccessible": true,
     "openai/widgetCSP": {
-      connect_domains: connectDomains,
-      resource_domains: resourceDomains,
+      connect_domains: CONNECT_DOMAINS,
+      resource_domains: RESOURCE_DOMAINS,
     },
   } as const;
 }
